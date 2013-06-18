@@ -26,3 +26,19 @@ rake db:migrate
 rails s -p4002
 用浏览器访问localhost:4002
 
+
+
+# TODO
+## I18n
+- 界面及提示信息i18n
+- 保存多语言信息到数据库
+- 后台编辑多语言信息
+
+## 元数据
+- table,model
+- field(name,type,width)
+
+## 文件管理界面
+
+## 模块化
+
