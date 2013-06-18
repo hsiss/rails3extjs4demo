@@ -1,0 +1,206 @@
+{
+return_type:"js",
+success:true,
+run: function(){
+
+var cmp_id = 'admin_role_list';
+var cmp = Ext.getCmp(cmp_id);
+if(cmp){
+  active_container(cmp);
+}
+
+
+var store = new Ext.data.JsonStore({
+    remoteSort: true,
+    fields: [
+{name:'id'},
+{name:'code'},
+{name:'name'}
+    ],
+    proxy: {
+      type: 'ajax',
+      url: '/admin/admin_role/list_data',
+      reader: {
+          type: 'json',
+          root: 'rows',
+          totalProperty: 'totalCount',
+          idProperty: 'id'
+      }
+    },
+    sorters: [{
+        property: 'code',
+        direction: 'asc'
+    }]
+
+});
+var pageSize = 50;
+var grid = new Ext.grid.GridPanel({
+    stateId:'admin_role_list_grid',
+    ref:'grid',
+    region: 'center',
+    store: store,
+    trackMouseOver:false,
+    loadMask: true,
+    stripeRows:true,
+    columns:[
+      new Ext.grid.RowNumberer(),
+      {header:"编码",dataIndex:"code",sortable: true},
+      {header:"名称",dataIndex:"name",sortable: true}
+    ],
+    selType: 'rowmodel',
+    viewConfig: {forceFit:true},
+    tbar:[
+      {text: '刷新', handler:function(){
+          grid.fireEvent('refresh');
+        }, scope:this },'|',
+      {text: '新增', 
+        handler:function(){
+          grid.fireEvent('new');
+        },scope:this },'|',
+      {text: '修改', handler:function(){
+          grid.fireEvent('edit');
+        }, scope:this},'|',
+      {text: '删除', handler:function(){
+          grid.fireEvent('delete');
+        }, scope:this},'|',
+//      {text: '用户设置', handler:function(){
+//          grid.fireEvent('user_setting');
+//        }, scope:this},'|',
+      {text: '权限分配', handler:function(){
+          grid.fireEvent('auth_setting');
+        }, scope:this},'|'
+    ],
+    bbar: new Ext.PagingToolbar({
+        pageSize: pageSize,
+        store: store,
+        displayInfo: true
+    })
+});
+
+grid.on("auth_setting",function(){
+  var sm = grid.getSelectionModel();
+  if (sm.hasSelection()){
+    var sel = sm.getLastSelected();
+    execute_remote_extjson('/admin/admin_role/auth_setting/'+sel.data.id);
+  }else{
+    Ext.Msg.alert('系统提示', "请选择数据行");
+  }
+},grid);
+
+grid.on("new",function(){
+  Ext.Ajax.request({
+      url: '/admin/admin_role/new/',
+      success: function(response, opts) {
+          var jsret =  Ext.decode(response.responseText);
+          if (jsret.return_type && jsret.return_type==='js' && jsret.run){
+              var edit_win = jsret.run(); 
+              edit_win.on_ok = function(){ grid.fireEvent("refresh"); }
+          }
+          
+          if (jsret.message){
+              Ext.Msg.alert('系统提示', jsret.message);
+          }
+          if (jsret.errormsg){
+              Ext.Msg.alert('错误', jsret.errormsg);
+          }
+      },
+      failure: default_ajax_request_failure_callback
+  });
+},grid);
+
+grid.on("edit",function(){
+  var sm = grid.getSelectionModel();
+  if (!sm.hasSelection()){
+    Ext.Msg.alert('系统提示', "请选择数据行");
+    return;
+  }
+
+  var sel = sm.getLastSelected();
+  Ext.Ajax.request({
+      url: '/admin/admin_role/edit/'+sel.data.id,
+      success: function(response, opts) {
+          var jsret =  Ext.decode(response.responseText);
+          if (jsret.return_type && jsret.return_type==='js' && jsret.run){
+              var edit_win = jsret.run(); 
+              edit_win.on_ok = function(){ grid.fireEvent("refresh"); };
+          }
+          
+          if (jsret.message){
+              Ext.Msg.alert('系统提示', jsret.message);
+          }
+          if (jsret.errormsg){
+              Ext.Msg.alert('错误', jsret.errormsg);
+          }
+      },
+      failure: default_ajax_request_failure_callback
+  });
+},grid);
+
+grid.on("delete",function(){
+  var sm = grid.getSelectionModel();
+  if (sm.hasSelection()){
+    Ext.MessageBox.confirm('确认删除', '确实要删除吗?', function(btn){
+      if (btn=='yes'){
+        var sel = sm.getLastSelected();
+        Ext.Ajax.request({
+          url: '/admin/admin_role/delete/'+sel.data.id,
+          success: function(response, opts){
+            default_success_function(response, opts);
+            grid.fireEvent('refresh');
+          },
+          failure: default_success_function
+        });
+      }
+    });
+  }else{
+    Ext.Msg.alert('系统提示', "请选择数据行");
+  }
+},grid);
+
+grid.on("celldblclick",function(){
+  grid.fireEvent("edit");
+},grid);
+
+grid.on("refresh",function(){
+  this.store.reload();
+},grid);
+
+
+var conditionForm = new Ext.FormPanel({
+    region: 'north',
+    labelWidth: 75, // label settings here cascade unless overridden
+    frame:true,
+    title: '查询条件',
+    bodyStyle:'padding:5px 5px 0',
+    defaults: {width: 230},
+    defaultType: 'textfield',
+
+    items: [{
+            fieldLabel: '编码',
+            name: 'code'
+        },{
+            fieldLabel: '名称',
+            name: 'name'
+        }
+    ],
+
+    buttons: [{
+        text: '查询'
+    },{
+        text: '重置'
+    }]
+});
+
+var win = new Ext.window.Window({stateful: false, isWindow: true, constrainHeader: true, minimizable: true, maximizable: true,
+  layout:'border', title:'角色管理',width:500,height:380,
+  items:[conditionForm,grid]
+});
+win.show();
+var params = conditionForm.getForm().getValues();
+params.start = 0;
+params.limit = pageSize;
+store.load({params:params});
+return win;
+
+}
+}

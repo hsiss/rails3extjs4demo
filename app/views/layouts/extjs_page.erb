@@ -1,0 +1,183 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=UTF-8" />
+
+<title>创翼业务系统</title>
+
+<% theme = "classic" %>
+<%= stylesheet_link_tag "/ext/resources/ext-theme-#{theme}/ext-theme-#{theme}-all.css",:id=>"theme" %>
+<%= stylesheet_link_tag "ext/silk.css" %>
+
+<link rel="shortcut icon" href="<%=asset_path 'favicon.png'  %>">
+
+</head>
+
+<body>
+
+<%= javascript_include_tag "/ext/ext-all.js"%>
+<%= javascript_include_tag "/ext/ext-theme-#{theme}.js"%>
+<%= javascript_include_tag "/ext/ext-lang-zh_CN.js" %>
+
+<%= javascript_include_tag "extjs_callback" %>
+ 
+<script type="text/javascript">
+
+  Ext.Ajax.extraParams = {extjs:true,<%=raw "#{request_forgery_protection_token}:'#{form_authenticity_token}'" %>};
+
+//  Ext.chart.Chart.CHART_URL = '/ext/resources/charts.swf';
+
+  Ext.onReady(function() {
+//    Ext.QuickTips.init();
+//    Ext.form.Field.prototype.msgTarget = 'side';
+//    Ext.state.Manager.setProvider(new Ext.ux.state.HttpProvider({readUrl: '/app_user_extjs_state/read_state',saveUrl:'/app_user_extjs_state/submit_state'}));
+
+var header = new Ext.Panel( {
+  region : 'north',
+  id:'header',
+  animFloat:false,
+  animate: false,
+  collapseMode:'mini',
+  collapsible:true,
+  split:true,
+  header:false,
+  height : 24,
+  minHeight:20,
+  cls: "page-header",
+  items : [{
+      xtype:'toolbar',
+      items : [
+          {xtype:'tbspacer',width:10},
+          {xtype:'tbtext',text:"创翼业务系统",style:'font-weight:bold;font-size:16px;'},
+          '->',
+          {id:'message_box',xtype:'button',text:'消息',iconCls: 'silk-email',handler:Ext.bind(execute_remote_extjson,this,['/app_message/my_message'])},
+          '-',
+          {xtype:'tbtext',text:'<%= "用户:#{AdminUser.current.name}" %>'},
+          '-',
+          {
+              xtype:'combo',
+              fieldLabel: '样式',
+              value:'ext-all',
+              labelWidth:40,
+              mode: 'local',
+              triggerAction: 'all',
+              valueField:'id',
+              displayField:'display_text',
+              forceSelection:true,
+              store : Ext.create('Ext.data.ArrayStore', {
+                fields:['id','display_text'],
+                data:[['ext-all',"默认"],['ext-all-gray',"银灰"],['ext-all-access',"黑色大字体"],['ext-neptune',"neptune"]]
+              }),
+              listeners:{
+                change:function(combo,newValue,oldValue,opts) {
+                  changeSkin(newValue);
+                } 
+              }
+          },'-','<%=Time.now.strftime('%Y-%m-%d')%>','-',{
+            iconCls:'silk-application-go',
+            text:'安全退出',handler:function(){
+              window.location='/admin/index/logout';
+          }
+          },'-',{
+            iconCls:'silk-lock',
+            text:'系统锁定',handler:function(){
+              execute_remote_extjs('/admin/index/sys_lock');
+            }
+      }]
+  }]
+});
+changeSkin = function(value) {
+  Ext.util.CSS.swapStyleSheet('theme','/ext/resources/css/' + value+ '.css');
+};
+var menu = Ext.create('Ext.panel.Panel', {
+    id : 'menu',
+    region : 'west',
+    collapseMode:'mini',
+    collapsible : true,    
+    title : "系统菜单",
+    iconCls:"silk-application-view-list",
+    split : true,
+    width : 180,
+    minSize : 50,
+    maxSize : 300,
+    margins : '0 0 5 5',
+    cmargins : '0 0 0 0',
+    autoScroll:true,
+    animCollapse:false,
+    animate: false,    
+    layout : "accordion",
+    // defaults:{draggable:true},
+      layoutConfig : {
+        titleCollapse : true,
+        animate : false,
+        fill : true
+    },
+    items : <%=raw AdminUser.current.function_accordion_jsondata.to_json %>
+});
+var main = Ext.create('Ext.tab.Panel', {
+    id : 'main',
+    region : 'center',
+    margins : '0 5 5 0',
+    resizeTabs : true,
+    minTabWidth : 135,
+    tabWidth : 135,
+    enableTabScroll : true,
+    activeTab : 0,
+//    plugins: new Ext.ux.TabCloseMenu({
+//      closeTabText: '关闭当前标签页',
+//      closeOtherTabsText: '关闭其他标签页',
+//      closeAllTabsText: '关闭所有标签页'
+//    }),
+    items : {
+        id : 'homePage',
+        title : '主页',
+        closable : false,
+        autoScroll : true,
+        tbar : [{text:'隐藏页头',handler:function(){Ext.getCmp('header').toggleCollapse(false);this.setText((Ext.getCmp('header').collapsed ? '显示页头':'隐藏页头'));}},
+            '-',{text:'隐藏菜单',handler:function(){Ext.getCmp('menu').toggleCollapse(false);this.setText((Ext.getCmp('menu').collapsed ? '显示菜单':'隐藏菜单'));}}
+        ],
+        xtype:'panel',
+        items:[]
+    }
+});
+var viewport = new Ext.Viewport({
+    layout:'border',
+    id:'viewport',
+    items:[ header,menu,main]
+});
+viewport.doLayout();
+
+
+//Ext.ns('App');
+//App.update_message_box = function(){
+//    Ext.Ajax.request({
+//        url: '/app_message/get_new_message_count/',
+//        success: function(response, opts){
+//            var jsret =  Ext.decode(response.responseText);
+//            if (jsret.success){
+//                Ext.getCmp('message_box').setText("消息("+jsret.new_message_count+")");
+//                if(jsret.new_message_count>0){
+//                    App.message.popup_warn("系统提示","您有新消息");
+//                }
+//            }
+//        },
+//        failure: Ext.emptyFn
+//    });
+//};
+//App.update_message_box_runner = new Ext.util.TaskRunner();
+//App.update_message_box_task={
+//    run: App.update_message_box,
+////    interval: 10000
+//    interval: 1000*60*5
+//};
+//App.update_message_box_runner.start(App.update_message_box_task);
+//if (Ext.getCmp('task_center_portlet')){
+//    Ext.getCmp('task_center_portlet').getUpdater().startAutoRefresh(300,"/app_task/my_task");
+//}
+  });
+  
+  <%= yield %>
+</script>
+
+</body>
+</html>

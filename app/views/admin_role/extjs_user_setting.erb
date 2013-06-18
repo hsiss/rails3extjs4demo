@@ -1,0 +1,43 @@
+var form = new Ext.FormPanel({
+  region: 'center',
+  labelWidth: 75, 
+  autoScroll:true,
+  url:'<%= url_for(:action=>:extjs_auth_setting_submit,:id=>@app_role) %>',
+  frame:true,
+  bodyStyle:'padding:5px 5px 0',
+  width: 350,
+  defaults: {width: 230},
+  defaultType: 'textfield',
+  layout:'fit',
+  items: [{
+          fieldLabel: '可用',
+          xtype:'checkbox',
+          name: 'car_fenxiaoshang[is_active]',
+          checked:<%= @car_fenxiaoshang.is_active? %>,
+          inputValue:'1'
+  }],
+
+  buttons: [{
+      text: '保存',
+      handler:function(){
+        this.findParentByType('form').getForm().submit({
+          success: function(form,action){
+            Ext.getCmp('main').getActiveTab().grid.fireEvent('refresh');
+            this.findParentByType('window').close();
+          },
+          failure: function(form,action){
+            if (action.result && action.result.errormsg){
+              Ext.Msg.alert('系统提示', action.result.errormsg);
+            }
+          },
+          scope : this
+        });
+      }
+  },{
+      text: '取消',
+      handler:function(){this.findParentByType('window').close();}
+  }]
+});
+
+var win=new Ext.Window({stateId:'app_role_extjs_user_setting_win', layout:'border', maximizable:true,title:'角色[<%= @app_role.code+' '+@app_role.name  %>]用户设置',width:600,height:400,items:[form]});
+win.show();

@@ -1,0 +1,265 @@
+{
+return_type:"js",
+run: function(){
+
+var panel_id = 'web_article_list';
+var panel = Ext.getCmp(panel_id);
+if(panel){
+  Ext.getCmp('main').setActiveTab(panel);
+  panel.getEl().frame("ff0000", 3, { duration: 0.5 });
+  panel.getEl().highlight();
+  return panel;
+}
+
+var pageSize = 50;
+var store = new Ext.data.JsonStore({
+    remoteSort: true,
+    pageSize: pageSize,
+    fields: [
+        {name:'id'},
+        {name:'title'},
+        {name:'created_at'},
+        {name:'updated_at'},
+        {name:'create_user_name'},
+        {name:'is_active'}
+    ],
+    proxy: {
+         type: 'ajax',
+         url: '/web_article/list_data',
+         reader: {
+             type: 'json',
+             root: 'rows',
+             totalProperty: 'totalCount',
+             idProperty: 'id'
+         }
+     },
+    sorters: [{
+        property: 'updated_at',
+        direction: 'desc'
+    }]
+});
+
+var grid = new Ext.grid.GridPanel({
+    stateId:'web_article_list_grid',
+    region: 'center',
+    store: store,
+    trackMouseOver:false,
+    loadMask: true,
+    stripeRows:true,
+    columns:[
+        new Ext.grid.RowNumberer(),
+        {header:"标题",dataIndex:"title",sortable: true,width:300},
+        {header:"创建人",dataIndex:"create_user_name",sortable: true},
+        {header:"创建时间",dataIndex:"created_at",sortable: true}
+    ],
+    selType: 'rowmodel',
+    viewConfig: {autoFill:true},
+    tbar:[{
+        text: '刷新', 
+        handler:function(){
+            grid.fireEvent('refresh');
+        }, scope:this 
+    },'|', {
+        text: '新增', 
+        handler: function(){
+            grid.fireEvent('new');
+        },scope:this 
+    },'|', {
+        text: '修改', 
+        handler:function(){
+            grid.fireEvent('edit');
+        }, scope:this
+    },'|', {
+        text: '删除', handler:function(){
+            grid.fireEvent('delete');
+        }, scope:this
+    }],
+    bbar: new Ext.PagingToolbar({
+      pageSize: pageSize,
+      store: store,
+      displayInfo: true
+    })
+});
+grid.on("new" ,function(){
+    Ext.Ajax.request({
+        url: '/web_article/new',
+        success: function(response, options) {
+            var jsret =  Ext.decode(response.responseText);
+            if (jsret.return_type && jsret.return_type==='js' && jsret.run){
+                var win = jsret.run();
+                win.on('close',function(){
+                    grid.fireEvent('refresh');
+                });
+            } else {
+                if (jsret.message){
+                    Ext.Msg.alert('系统提示', jsret.message);
+                }
+                if (jsret.errormsg){
+                    Ext.Msg.alert('错误', jsret.errormsg);
+                }
+                return false;
+            }
+        },
+        failure: default_ajax_request_failure_callback
+    });
+});
+
+grid.on("edit",function(){
+    var sm = grid.getSelectionModel();
+    if (!sm.hasSelection()){
+      Ext.Msg.alert('系统提示', "请选择数据行");
+      return;
+    }
+  
+    var sel = sm.getLastSelected();
+    Ext.Ajax.request({
+        url: '/web_article/edit/'+sel.data.id,
+        success: function(response, options) {
+            var jsret =  Ext.decode(response.responseText);
+            if (jsret.return_type && jsret.return_type==='js' && jsret.run){
+                var win = jsret.run();
+                win.on('close',function(){
+                    grid.fireEvent('refresh');
+                });
+            } else {
+                if (jsret.message){
+                    Ext.Msg.alert('系统提示', jsret.message);
+                }
+                if (jsret.errormsg){
+                    Ext.Msg.alert('错误', jsret.errormsg);
+                }
+                return false;
+            }
+        },
+        failure: default_ajax_request_failure_callback
+    });
+},grid);
+
+grid.on("delete",function(){
+    var sm = grid.getSelectionModel();
+    if (!sm.hasSelection()){
+      Ext.Msg.alert('系统提示', "请选择数据行");
+      return;
+    }
+  
+    var sel = sm.getLastSelected();
+    
+    Ext.MessageBox.confirm('确认删除', '确实要删除吗?', function(btn){
+        if (btn=='yes'){
+            Ext.Ajax.request({
+                url: '/web_article/delete/'+sel.data.id,
+                success: function(response, opts){
+                    grid.fireEvent('refresh');
+                },
+                failure: function(response, opts) {
+                    return eval(response.responseText);
+                }
+            });
+        }
+    });
+},grid);
+
+
+grid.on("celldblclick",function(){
+    grid.fireEvent('edit');
+},grid);
+
+grid.on("refresh",function(){
+    this.store.reload();
+},grid);
+
+var conditionForm = new Ext.FormPanel({
+    region: 'north',
+    url:'',
+    frame:true,
+    title:'查询条件',
+    collapsible : true,    
+    animCollapse:false,
+    bodyStyle: 'padding:5px 5px 0',
+    autoHeight:true,
+    layout:'column',
+    items: [{
+        xtype:'container',
+        layout:'form',
+        frame:true,
+        columnWidth: .49,
+        defaultType: 'textfield',
+        defaults: {
+            anchor:'90%',
+            labelWidth: 60, 
+            labelAlign:"left"
+        },
+        items:[{
+            fieldLabel: '标题',
+            name: 'title'
+        }]
+    },{
+        xtype:'container',
+        layout:'form',
+        frame:true,
+        columnWidth: .49,
+        defaultType: 'textfield',
+        defaults: {
+            anchor:'90%',
+            labelWidth: 60, 
+            labelAlign:"left"
+        },
+        items:[{
+            xtype: 'fieldcontainer',
+            layout: 'hbox',
+            fieldLabel: '创建日期',
+            items: [{
+                name: 'start_date',
+                format:'Y-m-d',
+                xtype:'datefield',
+                flex:1
+            },{
+              xtype:'label',
+              text:'到'
+            },{
+                name: 'end_date',
+                format:'Y-m-d',
+                xtype:'datefield',
+                flex:1
+            }]
+      }]
+    
+    }],
+    buttonAlign:'left',
+    buttons:['->',{
+        text: '重置',
+        listeners:{
+            click:function(){
+                this.findParentByType('form').getForm().reset();
+            }
+        }
+      },{
+        text: '查询',
+        listeners:{
+            click:function(){
+                do_query();
+            }
+        }
+    }],
+    listeners: {
+        afterRender: function(thisForm, options){
+            this.keyNav = Ext.create('Ext.util.KeyNav', this.el, {
+                enter: do_query,
+                scope: this
+            });
+        }
+    }
+});
+
+var do_query = function(){
+  store.getProxy().extraParams=conditionForm.getForm().getValues();
+  store.load();
+};
+
+panel = Ext.getCmp('main').add({id:panel_id,xtype:'panel',layout:'border',closable:true,title:"文章管理",items:[conditionForm,grid]}).show();
+do_query();
+return panel;
+
+
+}
+}

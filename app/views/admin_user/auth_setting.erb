@@ -1,0 +1,84 @@
+{
+return_type:"js",
+success:true,
+run: function(){
+
+var treepanel = Ext.create("Ext.tree.Panel", {
+    xtype:'treepanel',
+    rootVisible: false,
+    animate:false,
+    containerScroll: true,
+    store:{
+        xtype:"treestore",
+        proxy: {
+            type: 'ajax',
+            url: '/admin_user/auth_setting_data/<%=@admin_user.id%>'
+        },
+        sorters: [{
+            property: 'lft',
+            direction: 'ASC'
+        }]
+    },
+    listeners: {
+        checkchange: function(node, checked,eOpts){
+            if(checked){
+                for(var i = 0; i < node.childNodes.length; i++){
+                  node.childNodes[i].set("checked",true);
+                }
+            }else{
+                for(var i = 0; i < node.childNodes.length; i++){
+                  node.childNodes[i].set("checked",false);
+                }
+            }
+        }
+    },
+    
+    buttons: [{
+        text: '保存',
+        handler:function(){
+            var params = {id:<%=@admin_user.id%>};
+            params.allow_function_ids = [];
+            var records = treepanel.getChecked();
+            Ext.Array.each(records, function(rec){
+                params.allow_function_ids.push(rec.data.id);
+            });
+  
+            Ext.Ajax.request({
+                url: '/admin_user/auth_setting_submit',
+                jsonData: params,
+                success: function(response, opts){
+                    var jsret = Ext.decode(response.responseText);
+                    if (jsret.message){
+                        Ext.Msg.alert('系统提示', jsret.message);
+                    }
+                    if (jsret.errormsg){
+                        Ext.Msg.alert('错误', jsret.errormsg);
+                    }
+                    if(jsret.success){
+                        win.close();
+                    }
+                },
+                failure: function(response, opts){
+                    return eval(response.responseText);
+                },
+                scope: this
+            });
+        }
+    },{
+        text: '取消',
+        handler:function(){this.up('window').close();}
+    }]
+});
+
+
+var win=new Ext.Window({stateId:'admin_user_auth_setting_win', layout:'fit', maximizable:true,
+    title:'用户[<%= "#{@admin_user.username} #{@admin_user.name}" %>]权限设置',width:600,height:400,
+    items:[treepanel]});
+win.show();
+
+
+
+return win;
+
+}
+}

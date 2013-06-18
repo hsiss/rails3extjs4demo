@@ -1,0 +1,258 @@
+{
+return_type:"js",
+success:true,
+run: function(){
+
+var panel_id = 'admin_mendian_list';
+var panel = Ext.getCmp(panel_id);
+if(panel){
+  Ext.getCmp('main').setActiveTab(panel);
+  panel.getEl().frame("ff0000", 3, { duration: 500 });
+  return panel;
+}
+
+var store = new Ext.data.JsonStore({
+    remoteSort: true,
+
+    fields: [
+{name:'id'},
+{name:'code'},
+{name:'name'},
+{name:'is_active',type:"boolean"}
+    ],
+    proxy: {
+      type: 'ajax',
+      url: '<%=raw url("/admin_mendian/list_data")%>',
+      reader: {
+          type: 'json',
+          root: 'rows',
+          totalProperty: 'totalCount',
+          idProperty: 'id'
+      }
+    },
+    sorters: [{
+        property: 'code',
+        direction: 'asc'
+    }]
+});
+
+var pageSize = 50;
+var grid = new Ext.grid.GridPanel({
+    region: 'center',
+    store: store,
+    trackMouseOver:false,
+    loadMask: true,
+    stripeRows:true,
+    columns:[
+      new Ext.grid.RowNumberer(),
+      {text:"编码",dataIndex:"code",sortable: true},
+      {text:"名称",dataIndex:"name",sortable: true},
+      {text:"可用",dataIndex:"is_active",sortable: true,xtype:"booleancolumn",trueText:"启用",falseText:"停用"}
+    ],
+    selType: 'rowmodel',
+    viewConfig: {forceFit:true},
+    tbar:[
+      {text: '刷新', handler:function(){
+          grid.fireEvent('refresh');
+        }, scope:this },'|',
+      {text: '新增', 
+        handler:function(){
+          grid.fireEvent('new');
+        },scope:this },'|',
+      {text: '修改', handler:function(){
+          grid.fireEvent('edit');
+        }, scope:this},'|',
+      {text: '停用', handler:function(){
+          grid.fireEvent('disable');
+        }, scope:this},'|',
+      {text: '启用', handler:function(){
+          grid.fireEvent('enable');
+        }, scope:this}
+    ],
+    bbar: new Ext.PagingToolbar({
+        pageSize: pageSize,
+        store: store,
+        displayInfo: true
+    })
+});
+
+grid.on("new",function(){
+  Ext.Ajax.request({
+      url: '<%=raw url("/admin_mendian/new") %>',
+      success: function(response, opts) {
+          var jsret =  Ext.decode(response.responseText);
+          if (jsret.return_type && jsret.return_type==='js' && jsret.run){
+              var edit_win = jsret.run(); 
+              edit_win.on_ok = function(){ grid.fireEvent("refresh"); }
+          }
+          
+          if (jsret.message){
+              Ext.Msg.alert('系统提示', jsret.message);
+          }
+          if (jsret.errormsg){
+              Ext.Msg.alert('错误', jsret.errormsg);
+          }
+      },
+      failure: default_ajax_request_failure_callback
+  });
+},grid);
+
+grid.on("edit",function(){
+  var sm = grid.getSelectionModel();
+  if (!sm.hasSelection()){
+    Ext.Msg.alert('系统提示', "请选择数据行");
+    return;
+  }
+
+  var sel = sm.getLastSelected();
+  Ext.Ajax.request({
+      url: '<%=raw url("/admin_mendian/edit/") %>'+sel.data.id,
+      success: function(response, opts) {
+          var jsret =  Ext.decode(response.responseText);
+          if (jsret.return_type && jsret.return_type==='js' && jsret.run){
+              var edit_win = jsret.run(); 
+              edit_win.on_ok = function(){ grid.fireEvent("refresh"); };
+          }
+          
+          if (jsret.message){
+              Ext.Msg.alert('系统提示', jsret.message);
+          }
+          if (jsret.errormsg){
+              Ext.Msg.alert('错误', jsret.errormsg);
+          }
+      },
+      failure: default_ajax_request_failure_callback
+  });
+},grid);
+
+
+
+grid.on("disable",function(){
+  var sm = grid.getSelectionModel();
+  if (!sm.hasSelection()){
+    Ext.Msg.alert('系统提示', "请选择数据行");
+    return;
+  }
+
+  var sel = sm.getLastSelected();
+  Ext.MessageBox.confirm('确认停用', '确实要停用吗?', function(btn){
+    if (btn=='yes'){
+      Ext.Ajax.request({
+        url: '<%=raw url("/admin_mendian/disable/") %>'+sel.data.id,
+        success: function(response, opts){
+          default_ajax_request_success_callback(response, opts);
+          grid.fireEvent('refresh');
+        },
+        failure: default_ajax_request_failure_callback
+      });
+    }
+  });
+},grid);
+
+
+grid.on("enable",function(){
+  var sm = grid.getSelectionModel();
+  if (!sm.hasSelection()){
+    Ext.Msg.alert('系统提示', "请选择数据行");
+    return;
+  }
+
+  var sel = sm.getLastSelected();
+  Ext.MessageBox.confirm('确认启用', '确实要启用吗?', function(btn){
+    if (btn=='yes'){
+      Ext.Ajax.request({
+        url: '<%=raw url("/admin_mendian/enable/") %>'+sel.data.id,
+        success: function(response, opts){
+          default_ajax_request_success_callback(response, opts);
+          grid.fireEvent('refresh');
+        },
+        failure: default_ajax_request_failure_callback
+      });
+    }
+  });
+},grid);
+
+grid.on("celldblclick",function(){
+  grid.fireEvent("edit");
+},grid);
+
+
+grid.on("refresh",function(){
+  this.store.reload();
+},grid);
+
+
+var conditionForm = new Ext.FormPanel({
+    region: 'north',
+    labelWidth: 100, 
+    title:'查询条件',
+    collapsible : true,
+    animCollapse:false,
+    frame:true,
+    bodyStyle: 'padding:5px 5px 0',
+    defaultType: 'textfield',
+    autoHeight:false,
+    layout:'column',
+    items: [{
+        xtype:'container',
+        layout:'form',
+        columnWidth: .33,
+        defaultType: 'textfield',
+        items:[{
+            fieldLabel: '编码',
+            name: 'code'
+        }]
+    },{
+        xtype:'container',
+        layout:'form',
+        columnWidth: .33,
+        defaultType: 'textfield',
+        items:[{
+          fieldLabel: '名称',
+          name: 'name'
+        }]
+    }],
+    buttonAlign:'left',
+    buttons:['->',{
+        text: '重置',
+        listeners:{
+            click:function(){
+                this.up('form').getForm().reset();
+            }
+        }
+    },{
+        text: '查询',
+        listeners:{
+            click:function(){
+              do_query();
+            }
+        }
+    }],
+    listeners: {
+      afterRender: function(thisForm, options){
+          this.keyNav = Ext.create('Ext.util.KeyNav', this.el, {
+              enter: do_query,
+              scope: this
+          });
+      }
+    }
+});
+
+var do_query = function(){
+  store.getProxy().extraParams=conditionForm.getForm().getValues();
+  store.load({params:{start:0, limit:pageSize}});
+};
+
+
+
+panel = Ext.getCmp('main').add({id:panel_id,xtype:'panel',layout:'border',closable:true,title:"门店管理",items:[grid,conditionForm]}).show();
+params=conditionForm.getForm().getValues();
+params.start = 0;
+params.limit = pageSize;
+store.load({params:params});
+return panel;
+
+
+}
+}
+

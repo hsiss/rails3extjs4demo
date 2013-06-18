@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=UTF-8" />
+
+<title>创翼业务系统</title>
+
+<% theme = "classic" %>
+<%= stylesheet_link_tag "/ext/resources/ext-theme-#{theme}/ext-theme-#{theme}-all.css",:id=>"theme" %>
+<%= stylesheet_link_tag "application" %>
+
+<link rel="shortcut icon" href="<%=asset_path 'favicon.png'  %>">
+
+</head>
+
+<body>
+
+<%= javascript_include_tag "/ext/ext-all.js"%>
+<%= javascript_include_tag "/ext/ext-theme-#{theme}.js"%>
+<%= javascript_include_tag "/ext/ext-lang-zh_CN.js" %>
+
+<%= javascript_include_tag "extjs_callback" %>
+ 
+<script type="text/javascript">
+
+Ext.onReady(function() {
+  Ext.Ajax.extraParams = {extjs:true,<%=raw "#{request_forgery_protection_token}:'#{form_authenticity_token}'" %>};
+Ext.QuickTips.init();
+
+var tabpanel = {
+  xtype : 'tabpanel',
+  activeTab : 0,
+  height : 180,
+  border : true,
+  items : [{
+    title : "身份认证",
+    xtype : 'container',
+    id : 'loginForm',
+    defaults : {
+      width : 260
+    },
+    bodyStyle : 'padding:20 0 0 50',
+    defaultType : 'textfield',
+    labelWidth : 40,
+    labelSeparator : '：',
+    items : [{
+          fieldLabel : '帐&nbsp;号',
+          name : 'username',
+          id : 'username',
+          cls : 'silk-user',
+          blankText : '帐号不能为空,请输入!',
+          maxLength : 30,
+          maxLengthText : '账号的最大长度为30个字符',
+          allowBlank : false,
+          listeners : {
+            specialkey : function(field, e) {
+              if (e.getKey() == Ext.EventObject.ENTER) {
+                Ext.getCmp('password').focus();
+              }
+            }
+          }
+        }, {
+          fieldLabel : '密&nbsp;码',
+          name : 'password',
+          id : 'password',
+          cls : 'silk-key',
+          inputType : 'password',
+          blankText : '密码不能为空,请输入!',
+          maxLength : 20,
+          maxLengthText : '密码的最大长度为20个字符',
+          allowBlank : false,
+          listeners : {
+            specialkey : function(field, e) {
+              if (e.getKey() == Ext.EventObject.ENTER) {
+                login();
+              }
+            }
+          }
+        }]
+  }, {
+      title : '关于',
+      html :["上海创翼汽车服务有限公司业务系统",
+          "<br/>",
+          "<br/>",
+          "技术支持：上海高流信息技术有限公司"].join("")
+  }]
+};
+  
+var do_login = function(){
+    var params = {};
+    params['username']=Ext.get("username").getValue();
+    params['password']=Ext.get("password").getValue();
+    if(Ext.isEmpty(params['username'])){
+        Ext.get("username").focus();
+        return;
+    }
+    if(Ext.isEmpty(params['password'])){
+        Ext.get("password").focus();
+        return;
+    }
+    
+    
+    Ext.Ajax.request({
+      url: "/index/login_submit",
+      jsonData:params,
+      success: function(response, options){
+          var jsret =  Ext.decode(response.responseText);
+          if(jsret.success){
+              window.location="/";
+              return true;
+          }
+          
+          if(jsret.errormsg){
+              Ext.Msg.alert('错误', jsret.errormsg);
+              Ext.get("password").focus();
+          }
+          return false;
+      }
+    });
+  };
+    
+var win = Ext.create('Ext.window.Window',{
+  title : "上海创翼汽车服务有限公司 - 业务系统",
+  width : 460,
+  height : 300,
+  closeAction : 'hide',
+  modal : true,
+  collapsible : false,
+  titleCollapse : false,
+  maximizable : false,
+  closable : false,
+  resizable : false,
+  items : [{
+    xtype:"image",
+    src:'<%= asset_path "logo.gif"%>',
+    autoEl: 'div'
+  },tabpanel],
+  buttons : [{
+    text : '&nbsp;登录',
+    iconCls : 'silk-accept',
+    handler : function() {
+        do_login();
+    }
+  }]
+});
+  
+var viewport = new Ext.Viewport({
+    layout:'border',
+    id:'viewport',
+    items:[ ]
+});
+win.show();
+
+});
+</script>
+
+</body>
+</html>
+  

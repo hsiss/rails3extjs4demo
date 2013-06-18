@@ -1,0 +1,192 @@
+{
+  return_type : 'js',
+  auto_run : true,
+  run : function(){
+var store = new Ext.data.JsonStore({
+    root: 'rows',
+    totalProperty: 'totalCount',
+    idProperty: 'id',
+    remoteSort: true,
+    fields: [
+		{name:'id'},
+		{name:'code'},
+		{name:'name'},
+		{name:'department_name'},
+		{name:'store_name'},
+		{name:'email'},
+		{name:'mobilephone'},
+		{name:'remark'},
+		{name:'is_active'}
+    ],
+    proxy: new Ext.data.HttpProxy({
+        url: '/comm_employer/extjs_listdata?car_store_id=<%= @car_store_id %>&is_active=1'
+    })
+});
+store.setDefaultSort('code', 'asc');
+var pageSize = 50;
+var sm = new Ext.grid.CheckboxSelectionModel({});
+var grid = new Ext.grid.GridPanel({
+    stateId:'comm_employer_select_list_grid',
+    ref:'grid',
+    region: 'center',
+    store: store,
+    trackMouseOver:false,
+    loadMask: true,
+    stripeRows:true,
+    enableColumnHide:false,
+    columns:[
+      new Ext.grid.RowNumberer(),
+      sm,
+      {header:"编码",dataIndex:"code",sortable: true},
+      {header:"名称",dataIndex:"name",sortable: true},
+      {header:"部门",dataIndex:"department_name",sortable: true},
+      {header:"门店",dataIndex:"store_name",sortable: true},
+      {header:"电子邮件信箱",dataIndex:"email",sortable: true},
+      {header:"手机",dataIndex:"mobilephone",sortable: true},
+      {header:"备注",dataIndex:"remark",sortable: true},
+      {header:"可用",dataIndex:"is_active",sortable: true,renderer:function(value, metaData, record, rowIndex, colIndex, store) { return (value ? '可用' : '停用');}}
+    ],
+    sm:sm,
+    viewConfig: {forceFit:true},
+    tbar:[
+      {text: '刷新', handler:function(){
+          grid.fireEvent('refresh');
+        }, scope:this },'|',
+      {text: '导入', handler:function(){
+          if('<%= @is_quary_employer %>'){
+            grid.fireEvent('get_employer');
+          }else{
+            grid.fireEvent('import_all');
+          }
+        }, scope:this}
+    ],
+    bbar: new Ext.PagingToolbar({
+        pageSize: pageSize,
+        store: store,
+        displayInfo: true
+    })
+});
+
+grid.on("refresh",function(){
+  this.store.reload();
+},grid);
+
+grid.on("get_employer",function(){
+  var sm = grid.getSelectionModel();
+  if(!sm.hasSelection()){
+    Ext.Msg.alert('系统提示','请选择数据行');
+  }
+  var data = sm.getSelected().data;
+  var this_win = this.findParentByType('window');
+  if(this_win.on_dblclick_callback){
+    this_win.on_dblclick_callback(data);
+    this_win.close();
+  }
+},grid);
+
+grid.on("import_all",function(){
+	var this_win = this.findParentByType('window'); 
+    var rows = grid.getSelectionModel().getSelections();
+    items = [];
+    for(var i = 0;i<rows.length;i++){
+    	items.push(rows[i]);
+    }
+    if(items.length < 1){  
+      Ext.Msg.alert("提示信息","请选择要导入的记录!");
+      return;
+    }else{
+        this_win.import_callback(items);
+    }
+    this_win.close();
+},grid);
+store.load({params:{start:0, limit:pageSize}});
+var conditionForm = new Ext.FormPanel({
+  region: 'north',
+  labelWidth: 100,
+  frame:true,
+  title:'查询条件',
+  collapsible : true,
+  animCollapse:false,
+  bodyStyle: 'padding:5px 5px 0',
+  defaultType: 'textfield',
+  autoHeight:true,
+  forceLayout:true,
+  layout:'column',
+    items: [{
+      xtype:'panel',
+      layout:'form',
+      columnWidth: .5,
+      defaultType: 'textfield',
+      items:[{
+        fieldLabel: '编号',
+        name: 'code'
+      },{
+        fieldLabel: '姓名',
+        name: 'name'
+    }]
+  },{
+      xtype:'panel',
+      layout:'form',
+      columnWidth: .5,
+      defaultType: 'textfield',
+      items:[{
+        fieldLabel: '部门',
+        xtype:'combo',
+        hiddenName: 'department_id',
+        emptyText:'按门店查询',
+        selectOnFocus:true,
+        mode: 'local',
+        triggerAction: 'all',
+        valueField:'id',
+        displayField:'display_text',
+        store : <%=CommDepartment.to_extjs_combo_store_allow_all.to_json%>,
+        forceSelection:true
+       
+    }]
+  }],
+  buttonAlign:'left',
+  buttons:['->',{
+      text: '重置',
+      listeners:{
+          click:function(){
+      this.findParentByType('form').getForm().reset();
+          }
+      }
+    },{
+      text: '查询',
+      ref:'../queryBtn',
+      listeners:{
+          click:function(){
+      store.baseParams=Ext.apply({},this.findParentByType('form').getForm().getValues(),store._baseParams);
+              store.load({params:{start:0, limit:pageSize}});
+          }
+      }
+  }],
+  keys:[{
+      key: [10,13],
+      fn:function(){
+          conditionForm.queryBtn.fireEvent('click');
+      }
+  }]
+
+});
+
+if('<%= @is_quary_employer %>'){
+  var column = grid.getColumnModel().config;
+  for(var i=0;i<column.length;i++){
+    var dataIndex = ','+column[i].dataIndex+',';
+    if(',name,department_name,store_name,is_active,'.indexOf(dataIndex)<0){
+      column[i].hidden=true;
+    }
+  }
+
+  grid.on('celldblclick', function(){
+    grid.fireEvent('get_employer');
+  });
+}
+
+var win=new Ext.Window({stateId:'comm_employer_select_list_win',layout:'border', maximizable:true,title:'员工选择列表',width:600,height:480,items:[grid,conditionForm]});
+win.show();
+return win;
+}
+}

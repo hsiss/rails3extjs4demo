@@ -1,0 +1,150 @@
+Ext.ux.MenuTreeCheckNodeUI = function() {
+  Ext.ux.MenuTreeCheckNodeUI.superclass.constructor.apply(this, arguments);
+};
+
+Ext.ux.MenuTreeCheckNodeUI = Ext.extend(Ext.ux.MenuTreeCheckNodeUI, Ext.tree.TreeNodeUI, {
+    // copy and edit from TreeNodeUI
+    renderElements : function(n, a, targetNode, bulkRender){
+        // add some indent caching, this helps performance when rendering a large tree
+        this.indentMarkup = n.parentNode ? n.parentNode.ui.getChildIndent() : '';
+
+        var cb = typeof a.checked == 'boolean';
+
+        var href = a.href ? a.href : Ext.isGecko ? "" : "#";
+        var buf = ['<li class="x-tree-node"><div ext:tree-node-id="',n.id,'" class="x-tree-node-el x-tree-node-leaf x-unselectable ', a.cls,'" unselectable="on">',
+            '<span class="x-tree-node-indent">',this.indentMarkup,"</span>",
+            '<img src="', this.emptyIcon, '" class="x-tree-ec-icon x-tree-elbow" />',
+            '<img src="', a.icon || this.emptyIcon, '" class="x-tree-node-icon',(a.icon ? " x-tree-node-inline-icon" : ""),(a.iconCls ? " "+a.iconCls : ""),'" unselectable="on" />',
+            cb ? ('<input ' + (a.checkboxname ? ' name="'+a.checkboxname+'"' : '') + (a.checkboxvalue ? ' value="'+a.checkboxvalue+'"' : '') + ' class="x-tree-node-cb" type="checkbox" ' + (a.checked ? 'checked="checked" />' : '/>')) : '',
+            '<a hidefocus="on" class="x-tree-node-anchor" href="',href,'" tabIndex="1" ',
+             a.hrefTarget ? ' target="'+a.hrefTarget+'"' : "", '><span unselectable="on">',n.text,"</span></a></div>",
+            '<ul class="x-tree-node-ct" style="display:none;"></ul>',
+            "</li>"].join('');
+
+        var nel;
+        if(bulkRender !== true && n.nextSibling && (nel = n.nextSibling.ui.getEl())){
+            this.wrap = Ext.DomHelper.insertHtml("beforeBegin", nel, buf);
+        }else{
+            this.wrap = Ext.DomHelper.insertHtml("beforeEnd", targetNode, buf);
+        }
+        
+        this.elNode = this.wrap.childNodes[0];
+        this.ctNode = this.wrap.childNodes[1];
+        var cs = this.elNode.childNodes;
+        this.indentNode = cs[0];
+        this.ecNode = cs[1];
+        this.iconNode = cs[2];
+        var index = 3;
+        if(cb){
+            this.checkbox = cs[3];
+        // fix for IE6
+        this.checkbox.defaultChecked = this.checkbox.checked;           
+        index++;
+        }
+        this.anchor = cs[index];
+        this.textNode = cs[index].firstChild;
+    }
+});
+
+var form = new Ext.FormPanel({
+  region: 'center',
+  labelWidth: 75, 
+  autoScroll:true,
+  url:'<%= url_for(:action=>:extjs_auth_setting_submit,:id=>@app_role) %>',
+  frame:true,
+  bodyStyle:'padding:5px 5px 0',
+  width: 350,
+  defaults: {width: 230},
+  defaultType: 'textfield',
+  layout:'fit',
+  items: [{
+          xtype:'treepanel',
+          id:'function_tree',
+          autoScroll:true,
+          animate:false,
+          enableDD:true,
+          containerScroll: true,
+          rootVisible: false,
+          frame: true,
+          root: {
+              nodeType: 'async'
+          },
+        
+          loader: new Ext.tree.TreeLoader({
+            dataUrl: '/app_role/extjs_auth_setting_data/<%=@app_role.id%>',
+            uiProviders : {'menucheck':Ext.ux.MenuTreeCheckNodeUI}
+          }),
+          listeners: {
+              'checkchange': function(node, checked){
+                  if(checked){
+                      //node.getUI().addClass('complete');
+                  }else{
+                      //node.getUI().removeClass('complete');
+                  }
+              }
+          },
+          
+          buttons1: [{
+              text: 'Get Completed Tasks',
+              handler: function(){
+                  var msg = '', selNodes = tree.getChecked();
+                  Ext.each(selNodes, function(node){
+                      if(msg.length > 0){
+                          msg += ', ';
+                      }
+                      msg += node.text;
+                  });
+                  Ext.Msg.show({
+                      title: 'Completed Tasks', 
+                      msg: msg.length > 0 ? msg : 'None',
+                      icon: Ext.Msg.INFO,
+                      minWidth: 200,
+                      buttons: Ext.Msg.OK
+                  });
+              }
+          }]
+      }
+  ],
+
+  buttons: [{
+      text: '保存',
+      handler:function(){
+          var params = {id:<%=@app_role.id%>};
+          params.allow_function_ids =this.findParentByType('form').getForm().getValues()['app_function[]'];
+          Ext.Ajax.request({
+              url: '/app_role/extjs_auth_setting_submit',
+              jsonData: params,
+              success: function(response, opts){
+                  var jsret = Ext.decode(response.responseText);
+                  if (jsret.message){
+                      Ext.Msg.alert('系统提示', jsret.message);
+                  }
+                  if (jsret.errormsg){
+                      Ext.Msg.alert('错误', jsret.errormsg);
+                  }
+                  if(jsret.success){
+                      win.close();
+                  }
+              },
+              failure: function(response, opts){
+                  return eval(response.responseText);
+              },
+              scope: this
+          });
+      }
+  },{
+      text: '取消',
+      handler:function(){this.findParentByType('window').close();}
+  }]
+});
+
+var win=new Ext.Window({stateId:'app_role_extjs_auth_setting_win', layout:'border', maximizable:true,title:'角色[<%= @app_role.code+' '+@app_role.name  %>]权限设置',width:600,height:400,items:[form]});
+win.show();
+
+new Ext.util.DelayedTask(function(){
+    var function_tree = Ext.getCmp('function_tree');
+      function_tree.collapseAll();
+      function_tree.getRootNode().expand(false);
+      Ext.each(function_tree.getRootNode().childNodes,function(item){item.expand(false);});
+}).delay(1000);
+

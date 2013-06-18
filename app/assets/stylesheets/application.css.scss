@@ -1,0 +1,51 @@
+/*
+ *
+ *= require "silk"
+ *= require "BoxSelect"
+ 
+ *= require_self
+ */
+
+.colored_flag1 {background-color: #fef7a3 !important;}
+tr.colored_flag1 td{background-color: #fef7a3 !important;}
+
+.colored_flag2 {background-color: #71fcb6 !important;}
+tr.colored_flag2 td{background-color: #71fcb6 !important;}
+
+
+.hsplitter{border-bottom:1px dashed #666;}
+
+
+.datagrid tr.x-grid-row td{border-bottom:1px solid #333333 !important;border-right:1px solid #333333 !important;}
+/* ==.launchpad ============================================================= */
+.launchpad .x-view-over{
+  background:#fdf6e3;
+}
+
+.launchpad .thumb{
+    background: #dddddd;
+    padding: 8px;
+}
+.launchpad .thumb img{
+    height: 96px;
+    width: 96px;
+}
+.launchpad .thumb-wrap{
+    float: left;
+    margin: 10px;
+    margin-right: 0;
+    padding: 5px;
+}
+.launchpad .thumb-wrap span{
+    display: block;
+    overflow: hidden;
+    text-align: center;
+    width:96px;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    padding: 8px;
+}
+
+
+/* == ueditor hack ============================================================= 
+.edui-editor{width:100%;}*/

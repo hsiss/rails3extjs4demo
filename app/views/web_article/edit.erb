@@ -1,0 +1,127 @@
+{
+  return_type : 'js',
+  auto_run    : true,
+  success     : true,
+  run         : function(){
+  	
+    var ueid=Ext.id();
+    var form = new Ext.form.FormPanel({
+      url: '/web_article/save',
+      frame: true,
+      layout: 'form',
+      region: 'north',
+      bodyStyle: 'padding: 5px 5px 0',
+      defaults: {
+        anchor: '98%',
+      },
+      labelWidth: 75,
+      items: [{
+        xtype: 'hidden',
+        name: 'id'
+      },{
+        xtype: 'textfield',
+        name: 'title',
+        labelWidth:40,
+        fieldLabel: '标题'
+      }]
+    });
+
+    var editor_panel = new Ext.Panel({
+      region:'center',
+      html:"<div name='"+ueid+"' id='"+ueid+"'></div>"
+    });
+    
+    var win = new Ext.window.Window({
+      title: '文章编辑',
+      width: 660,
+      height: 600,
+      closable: true,
+      maximizable:true,
+      layout: 'border',
+      items: [form,editor_panel],
+      buttons: [{
+        text: '重置',
+        listeners: {
+          click: function(){
+            form.getForm().reset();
+          }
+        }
+      }, {
+        text: '保存',
+        listeners: {
+            click: function(){
+                form.el.mask('正在提交数据，请稍等！', 'x-mask-loading');
+                
+                var data = form.getForm().getFieldValues();
+                data.content = editor.getContent();
+                Ext.Ajax.request({
+                    url: '/web_article/save',
+                    jsonData: data,
+                    success: function(response, opts){
+                        form.el.unmask();
+                        var jsret =  Ext.decode(response.responseText);
+                        if (jsret.message){
+                            Ext.Msg.alert('系统提示', jsret.message);
+                        }
+                        if (jsret.errormsg){
+                            Ext.Msg.alert('错误', jsret.errormsg);
+                        }
+                        if (jsret.return_type && jsret.return_type==='js' && jsret.run){
+                            return jsret.run(); //var win = jsret.run();
+                        }
+                        if(jsret.success){
+                            win.close();
+                        }
+                        return false;
+                    },
+                    failure: function(response, opts){
+                        form.el.unmask();
+                    }
+                });
+            }
+        }
+      }, {
+        text: '取消',
+        listeners: {
+          click: function(){
+            win.close();
+          }
+        }
+      }]
+    });
+    win.show();
+    
+    var editor = new baidu.editor.ui.Editor({
+        autoHeightEnabled:false,
+        minFrameHeight:360,
+        zIndex:win.getEl().getZIndex()+1,
+        imageUrl:"/web_article/image_upload/<%= @article.id%>",
+        imagePath:"",
+//        postParams:{"<%= request_forgery_protection_token %>":"<%= form_authenticity_token %>"}, //解决session丢失问题
+//        iframeUrlMap:{insertimage:"/ueditor/image.html"},   //这个不用
+        initialContent: <%=raw (@article.content || "").to_json %>
+    });
+    editor.render(ueid); 
+    var data = <%=raw @article.attributes.to_json %>;
+    form.getForm().setValues(data);
+    
+    editor_panel.on("resize", function( box, width, height, oldWidth, oldHeight, eOpts ){
+        if(!editor.ui){
+            Ext.defer(function(){
+                editor_panel.fireEvent("resize");
+            },1000);
+            return;
+        }
+        var editor_ui = Ext.get(editor.ui.getDom());
+        editor_ui.setWidth("100%");
+        editor.setHeight(editor_panel.getHeight() - 
+            editor_ui.down(".edui-editor-toolbarbox").getHeight() -
+            editor_ui.down(".edui-editor-bottomContainer").getHeight()
+        );
+    });
+    editor_panel.fireEvent("resize");
+
+    
+    return win;
+  }
+}

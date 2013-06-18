@@ -1,0 +1,340 @@
+{
+return_type:"js",
+success:true,
+run: function(){
+
+var panel_id = 'admin_user_list';
+var panel = Ext.getCmp(panel_id);
+if(panel){
+  Ext.getCmp('main').setActiveTab(panel);
+  panel.getEl().frame("ff0000", 3, { duration: 500 });
+  return panel;
+}
+
+var store = new Ext.data.JsonStore({
+    remoteSort: true,
+    fields: [
+        {name:'id'},
+        {name:'username'},
+        {name:'name'},
+        {name:'role_name'},
+        {name:'is_active',type:"boolean"},
+        {name:'employer_name'},
+        {name:'mendian_name'}
+    ],
+    proxy: {
+      type: 'ajax',
+      url: '/admin_user/list_data',
+      reader: {
+          type: 'json',
+          root: 'rows',
+          totalProperty: 'totalCount',
+          idProperty: 'id'
+      }
+    },
+    sorters: [{
+        property: 'mendian_name',
+        direction: 'asc'
+    }]
+});
+var pageSize = 50;
+var grid = new Ext.grid.GridPanel({
+    ref:'grid',
+    region: 'center',
+    store: store,
+    trackMouseOver:false,
+    loadMask: true,
+    stripeRows:true,
+    columns:[
+      new Ext.grid.RowNumberer(),
+      {header:"用户名",dataIndex:"username",sortable: true},
+      {header:"姓名",dataIndex:"name",sortable: true},
+      {header:"可用",dataIndex:"is_active",sortable: true,xtype:"booleancolumn",trueText:"可用",falseText:"停用"},
+      {header:"对应员工",dataIndex:"employer_name",sortable: true},
+      {header:"门店",dataIndex:"mendian_name",sortable: true}
+    ],
+    selType: 'rowmodel',
+    viewConfig: {forceFit:true},
+    tbar:[
+      {text: '刷新', handler:function(){
+          grid.fireEvent('refresh');
+        }, scope:this },'|',
+      {text: '新增', 
+        handler:function(){
+          grid.fireEvent('new');
+        },scope:this },'|',
+      {text: '修改', handler:function(){
+          grid.fireEvent('edit');
+        }, scope:this},'|',
+      {text: '修改密码', handler:function(){
+          grid.fireEvent('change_password');
+        }, scope:this},'|',
+      {text: '停用', handler:function(){
+          grid.fireEvent('disable');
+        }, scope:this},'|',
+      {text: '启用', handler:function(){
+          grid.fireEvent('enable');
+        }, scope:this},'|',
+      {text: '权限分配', handler:function(){
+          grid.fireEvent('auth_setting');
+        }, scope:this}
+    ],
+    bbar: new Ext.PagingToolbar({
+        pageSize: pageSize,
+        store: store,
+        displayInfo: true
+    })
+});
+
+grid.on("new",function(){
+  Ext.Ajax.request({
+      url: '/admin_user/new/',
+      success: function(response, opts) {
+          var jsret =  Ext.decode(response.responseText);
+          if (jsret.return_type && jsret.return_type==='js' && jsret.run){
+              var edit_win = jsret.run(); 
+              edit_win.on_ok = function(){ grid.fireEvent("refresh"); }
+          }
+          
+          if (jsret.message){
+              Ext.Msg.alert('系统提示', jsret.message);
+          }
+          if (jsret.errormsg){
+              Ext.Msg.alert('错误', jsret.errormsg);
+          }
+      },
+      failure: default_ajax_request_failure_callback
+  });
+},grid);
+
+grid.on("edit",function(){
+  var sm = grid.getSelectionModel();
+  if (!sm.hasSelection()){
+    Ext.Msg.alert('系统提示', "请选择数据行");
+    return;
+  }
+
+  var sel = sm.getLastSelected();
+  Ext.Ajax.request({
+      url: '/admin_user/edit/'+sel.data.id,
+      success: function(response, opts) {
+          var jsret =  Ext.decode(response.responseText);
+          if (jsret.return_type && jsret.return_type==='js' && jsret.run){
+              var edit_win = jsret.run(); 
+              edit_win.on_ok = function(){ grid.fireEvent("refresh"); };
+          }
+          
+          if (jsret.message){
+              Ext.Msg.alert('系统提示', jsret.message);
+          }
+          if (jsret.errormsg){
+              Ext.Msg.alert('错误', jsret.errormsg);
+          }
+      },
+      failure: default_ajax_request_failure_callback
+  });
+},grid);
+
+grid.on("change_password",function(){
+  var sm = grid.getSelectionModel();
+  if (!sm.hasSelection()){
+    Ext.Msg.alert('系统提示', "请选择数据行");
+    return;
+  }
+
+  var sel = sm.getLastSelected();
+  execute_remote_extjson('/admin_user/change_password/'+sel.data.id);
+},grid);
+
+grid.on("delete",function(){
+  var sm = grid.getSelectionModel();
+  if (!sm.hasSelection()){
+    Ext.Msg.alert('系统提示', "请选择数据行");
+    return;
+  }
+
+  var sel = sm.getLastSelected();
+  Ext.MessageBox.confirm('确认删除', '确实要删除吗?', function(btn){
+    if (btn=='yes'){
+      Ext.Ajax.request({
+        url: '/admin_user/delete/'+sel.data.id,
+        success: function(response, opts){
+          default_ajax_request_success_callback(response, opts);
+          grid.fireEvent('refresh');
+        },
+        failure: default_ajax_request_failure_callback
+      });
+    }
+  });
+},grid);
+
+grid.on("disable",function(){
+  var sm = grid.getSelectionModel();
+  if (!sm.hasSelection()){
+    Ext.Msg.alert('系统提示', "请选择数据行");
+    return;
+  }
+
+  var sel = sm.getLastSelected();
+  Ext.MessageBox.confirm('确认停用', '确实要停用吗?', function(btn){
+    if (btn=='yes'){
+      Ext.Ajax.request({
+        url: '/admin_user/disable/'+sel.data.id,
+        success: function(response, opts){
+          default_ajax_request_success_callback(response, opts);
+          grid.fireEvent('refresh');
+        },
+        failure: default_ajax_request_failure_callback
+      });
+    }
+  });
+},grid);
+grid.on("enable",function(){
+  var sm = grid.getSelectionModel();
+  if (!sm.hasSelection()){
+    Ext.Msg.alert('系统提示', "请选择数据行");
+    return;
+  }
+
+  var sel = sm.getLastSelected();
+  Ext.MessageBox.confirm('确认启用', '确实要启用吗?', function(btn){
+    if (btn=='yes'){
+      Ext.Ajax.request({
+        url: '/admin_user/enable/'+sel.data.id,
+        success: function(response, opts){
+          default_ajax_request_success_callback(response, opts);
+          grid.fireEvent('refresh');
+        },
+        failure: default_ajax_request_failure_callback
+      });
+    }
+  });
+},grid);
+
+grid.on("celldblclick",function(){
+  grid.fireEvent("edit");
+},grid);
+
+grid.on("refresh",function(){
+  this.store.reload();
+},grid);
+
+grid.on("auth_setting",function(){
+  var sm = grid.getSelectionModel();
+  if (!sm.hasSelection()){
+    Ext.Msg.alert('系统提示', "请选择数据行");
+    return;
+  }
+
+  var sel = sm.getLastSelected();
+  execute_remote_extjson('/admin_user/auth_setting/'+sel.data.id);
+},grid);
+
+var conditionForm = new Ext.FormPanel({
+    region: 'north',
+    labelWidth: 100, 
+    title:'查询条件',
+    collapsible : true,    
+    animCollapse:false,
+    frame:true,
+    bodyStyle: 'padding:5px 5px 0',
+    defaultType: 'textfield',
+    autoHeight:true,
+    forceLayout:true,
+    layout:'column',
+    items: [{
+        xtype:'container',
+        layout:'form',
+        columnWidth: .33,
+        defaultType: 'textfield',
+        defaults: {anchor:'90%'},
+        items:[{
+            fieldLabel: '用户名',
+            name: 'username'
+        },{
+          fieldLabel: '姓名',
+          name: 'name'
+        }]
+    },{
+        xtype:'container',
+        layout:'form',
+        columnWidth: .33,
+        defaultType: 'textfield',
+        defaults: {anchor:'90%'},
+        items:[{
+        	fieldLabel: '门店',
+            name: 'mendian_id',
+            xtype:'combo',
+            selectOnFocus:true,
+            mode: 'local',
+            triggerAction: 'all',
+            valueField:'id',
+            displayField:'display_text',
+            forceSelection:true,
+            store : Ext.create('Ext.data.Store', {
+                fields:['id','display_text'],
+                data : <%=raw ([["","全部"]]+AdminMendian.to_extjs_combo_data).to_json %>
+
+            })
+        }]
+    },{
+        xtype:'container',
+        layout:'form',
+        columnWidth: .33,
+        defaultType: 'textfield',
+        defaults: {anchor:'90%'},
+        items:[{
+            xtype:'combo',
+            flex:1,
+            fieldLabel: '是否可用',
+            name: 'is_active',
+            emptyText:'请选择...',
+            selectOnFocus:true,
+            mode: 'local',
+            triggerAction: 'all',
+            valueField:'is_active',
+            displayField:'name',
+            forceSelection:true,
+            store : Ext.create('Ext.data.ArrayStore', {
+                fields:["name","is_active"],
+                data : [['是',true],['否',false]]
+            })
+        }]
+    }],
+    buttonAlign:'left',
+    buttons:['->',{
+        text: '重置',
+        listeners:{
+            click:function(){
+                this.findParentByType('form').getForm().reset();
+            }
+        }
+    },{
+        text: '查询',
+        ref:'../queryBtn',
+        listeners:{
+            click:function(){
+                  store.getProxy().extraParams=conditionForm.getForm().getValues();
+                store.load({params:{start:0, limit:pageSize}});
+            }
+        }
+    }],
+    keys:[{
+        key: [10,13],
+        fn:function(){
+            conditionForm.queryBtn.fireEvent('click');
+        }
+    }]
+});
+
+
+params=conditionForm.getForm().getValues();
+params.start = 0;
+params.limit = pageSize;
+store.load({params:params});
+
+panel = Ext.getCmp('main').add({id:panel_id,xtype:'panel',layout:'border',closable:true,title:"用户管理",items:[grid,conditionForm]}).show();
+return panel;
+
+}
+}

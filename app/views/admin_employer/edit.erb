@@ -1,0 +1,107 @@
+{
+return_type:"js",
+success:true,
+run: function(){
+
+var form = new Ext.FormPanel({
+  region: 'center',
+  labelWidth: 75, 
+  frame:true,
+  bodyStyle:'padding:5px 5px 0',
+  width: 350,
+  defaultType: 'textfield',
+
+  items: [{
+      xtype: 'hiddenfield',
+      name: 'id'
+  },{
+      fieldLabel: '编码',
+      name: 'code',
+      allowBlank:false
+  },{
+      fieldLabel: '姓名',
+      name: 'name',
+      allowBlank:false
+  },{
+      fieldLabel: '门店',
+      name: 'mendian_id',
+      allowBlank:true,
+      xtype:'combo',
+      emptyText:'请选择门店...',
+      selectOnFocus:true,
+      mode: 'local',
+      triggerAction: 'all',
+      valueField:'id',
+      displayField:'display_text',
+      forceSelection:true,
+      store : Ext.create('Ext.data.ArrayStore', {
+          fields:['id','display_text'],
+          data : <%=raw (AdminMendian.to_extjs_combo_data).to_json %>
+      })
+  },{
+      fieldLabel: '电子邮件信箱',
+      name: 'email'
+  },{
+      fieldLabel: '手机',
+      name: 'mobilephone'
+  },{
+      fieldLabel: '备注',
+      name: 'remark',
+      xtype:'textarea',
+      anchor:'90%'
+  }],
+
+  buttons: [{
+      text: '保存',
+      handler:function(){
+        if(!this.up("form").getForm().isValid()){
+          App.warn("请完整填写数据,红色框未验证通过");
+          return;
+        }
+      
+          Ext.Ajax.request({
+              url: '<%=raw url("/admin_employer/save")%>',
+              jsonData:{model:form.getForm().getFieldValues()},
+              success: function(response, opts) {
+                  var jsret =  Ext.decode(response.responseText);
+                  if(jsret.errors){
+                    console.log(this);
+                    this.up("form").getForm().markInvalid(jsret.errors);
+                  }
+                  if (jsret.message){
+                      Ext.Msg.alert('系统提示', jsret.message);
+                  }
+                  if (jsret.errormsg){
+                      Ext.Msg.alert('错误', jsret.errormsg);
+                  }
+                  if (jsret.success){
+                    if(win.on_ok){
+                      win.on_ok();
+                    }
+                    win.close();
+                  }
+              },
+              failure: default_ajax_request_failure_callback,
+              scope: this
+          });
+      }
+  },{
+      text: '取消',
+      handler:function(){this.findParentByType('window').close();}
+  }]
+});
+
+var win = new Ext.window.Window({stateful: false, isWindow: true, constrainHeader: true, minimizable: true, maximizable: true,
+  layout:'border', title:'门店管理 - 编辑',width:500,height:380,
+  items:[form]
+});
+win.show();
+
+win.set_data = function(data){
+  form.getForm().setValues(data);
+};
+win.set_data(<%=raw @admin_employer.edit_form_data.to_json%>);
+return win;
+
+}
+}

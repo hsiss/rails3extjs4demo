@@ -1,0 +1,20 @@
+
+
+body,h1,h2,h3,h4,h5,h6,hr,div,p,blockquote,dl,dt,dd,ul,ol,li,pre,form,fieldset,legend,button,input,textarea,th,td{margin:0 auto;padding:0}body{background-color:#fff;-webkit-text-size-adjust:none}body,button,input,select,textarea{font:12px/1.5 Arial,Tahoma,Times New Roman}h1,h2,h3,h4,h5,h6,th{font-size:100%;font-weight:normal}q:before,q:after{content:''}address,cite,dfn,em,var{font-style:normal}code,kbd,pre,samp{font-family:courier new,courier,monospace}small{font-size:11px}ul,ol{list-style:none}a{text-decoration:none}a:hover{text-decoration:underline}sup{vertical-align:text-top}sub{vertical-align:text-bottom}legend{color:#000;display:none}fieldset,img{border:0}input,button,textarea,select{vertical-align:middle;font-family:inherit;font-size:inherit;font-style:inherit;font-weight:inherit}textarea{overflow:auto}table{border-collapse:collapse;border-spacing:0}.clearfix,.clr{clear:both;overflow:hidden;height:100%}.fl{float:left}.fr{float:right}.pa{position:absolute}.tal{text-align:left}.tar{text-align:right}.tac{text-align:center}.pr{position:relative}.hide{display:none}:focus{outline:0}a,.hand{cursor:pointer}.vam{vertical-align:middle}
+/* login 
+.login,.login .txt,.login .submit{background:url(/images/login/login_bg.jpg) no-repeat} */
+.login{width:850px;height:381px;margin-top:120px;font-size:14px;color:#027BB7; }
+.login .txt{height:29px;line-height:29px;padding:0 5px;border:1}
+.login img{vertical-align:middle}
+.login ul{padding:160px 0 0 550px}
+.login li{padding-bottom:30px}
+
+.ic_ok{background:url(/images/login/ic_ok.png) no-repeat;width:17px;height:15px;display:inline-block;vertical-align:middle}
+
+
+.footer{ width:850px;text-align:center; font-size:14px; color:#FFFFFF; padding-top:10px; background:url(/images/login/shadow.png) no-repeat; height:100px;}
+
+
+a:hover{color:#f60}
+body{ background:url(/images/login/rpt.jpg);}
+

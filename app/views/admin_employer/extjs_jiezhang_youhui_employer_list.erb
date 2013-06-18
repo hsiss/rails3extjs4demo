@@ -1,0 +1,268 @@
+{
+    return_type : 'js',
+    auto_run : true,
+    run: function() {
+    
+    var editor = new Ext.ux.grid.RowEditor({
+        shadow: true,
+        saveText: '保存',
+        cancelText: '取消',
+        commitChangesText: '已修改，请保存或取消',
+        errorText: '系统提示',
+        afterStopEditing: function(changes,r){
+            Ext.Ajax.request({
+                url: '/repair_jiezhang_youhui_employer/update_youhui_amount',
+                jsonData: r.data,
+                method: 'post',
+                success: function(response, opts) {
+                  jsret =  Ext.decode(response.responseText);
+                },
+                failure: function(response, opts) {
+                },scope:this
+            });
+        }
+    });
+    
+    var combo = new Ext.ux.form.LovCombo({
+//	xtype:'lovcombo',
+    flex:1,
+    fieldLabel: '可操作门店',
+    hiddenName: 'enable_mendian_name',
+    selectOnFocus:true,
+    mode: 'local',
+    triggerAction: 'all',
+    valueField:'display_text',
+    displayField:'display_text',
+    forceSelection:true,
+    editable:false,
+    anchor:'90%',
+    store : <%=CarStore.all_mendian_to_extjs_combo_store.to_json%>,
+    beforeBlur: function(){
+    	var val = this.getRawValue();
+	    var texts = val.split(',');
+	    var values = '';
+	    for (var i = 0; i < texts.length; i++) {
+	        var rec = this.findRecord(this.displayField, texts[i].trim());
+	        if (rec) {
+	            values += (values.length > 0 ? ',' : '') + rec.data[this.valueField];
+	        }
+	    }
+	    this.setValue(values);
+	  }
+    });
+    
+var store = new Ext.data.JsonStore({
+    root: 'rows',
+    totalProperty: 'totalCount',
+    idProperty: 'id',
+    remoteSort: true,
+    fields: [
+		{name:'id'},
+		{name:'code'},
+		{name:'name'},
+		{name:'department_name'},
+		{name:'store_name'},
+		{name:'youhui_amount'},
+		{name:'youhui_percent'},
+		{name:'is_active'},
+		{name:'enable_mendian_name'}
+    ],
+    url: '/comm_employer/extjs_jiezhang_youhui_employer_list_data'
+});
+store.setDefaultSort('code', 'asc');
+var pageSize = 50;
+var grid = new Ext.grid.GridPanel({
+    stateId:'comm_employer_jiezhang_youhui_setting_grid',
+    ref:'grid',
+    region: 'center',
+    store: store,
+    trackMouseOver:false,
+    loadMask: true,
+    stripeRows:true,
+    columns:[
+      new Ext.grid.RowNumberer(),
+      {header:"编码",dataIndex:"code",sortable: true},
+      {header:"名称",dataIndex:"name",sortable: true},
+      {header:"优惠金额",dataIndex:"youhui_amount",sortable: true,editor:{xtype: 'numberfield'}},
+      {header:"优惠百分比(%)",dataIndex:"youhui_percent",sortable: true,editor:{xtype: 'numberfield'}},
+      {header:"部门",dataIndex:"department_name",sortable: true},
+      {header:"可操作门店",dataIndex:"enable_mendian_name",sortable: true,editor: combo},
+      {header:"所属门店",dataIndex:"store_name",sortable: true},
+      {header:"可用",dataIndex:"is_active",sortable: true,renderer:function(value, metaData, record, rowIndex, colIndex, store) { return (value ? '可用' : '停用');}}
+    ],
+    plugins: [editor],
+    sm: new Ext.grid.RowSelectionModel({singleSelect: true}),
+    view: new Ext.grid.GridView(),
+    tbar:[{
+        text: '刷新', handler:function(){
+            grid.fireEvent('refresh');
+        }, scope:this 
+    },'|',{
+        text: '新增结帐优惠人员', handler:function(){
+            grid.fireEvent('add_jiezhang_youhui_employer');
+        }, scope:this 
+    },'|',{
+        text: '删除结帐优惠人员', handler:function(){
+            grid.fireEvent('delete');
+        }, scope:this 
+    }],
+    bbar: new Ext.PagingToolbar({
+        pageSize: pageSize,
+        store: store,
+        displayInfo: true
+    })
+});
+
+var conditionForm = new Ext.FormPanel({
+    region: 'north',
+    labelWidth: 100, 
+    url:'',
+    frame:true,
+    title:'查询条件',
+    collapsible : true,    
+    animCollapse:false,
+    bodyStyle: 'padding:5px 5px 0',
+    defaultType: 'textfield',
+    autoHeight:true,
+    forceLayout:true,
+    layout:'column',
+    items: [{
+        xtype:'panel',
+        layout:'form',
+        columnWidth: .5,
+        defaultType: 'textfield',
+        defaults: {anchor:'90%'},
+        items:[{
+            fieldLabel: '编码',
+            name: 'code'
+        },{
+            fieldLabel: '名称',
+            name: 'name'
+        }]
+      },{
+        xtype:'panel',
+        layout:'form',
+        columnWidth: .5,
+        defaultType: 'textfield',
+        defaults: {anchor:'90%'},
+        items:[{
+            xtype: 'checkbox',
+            fieldLabel: '可用',
+            name: 'is_active',
+            checked: true
+        },{
+            fieldLabel: '门店',
+            hiddenName: 'car_store_id',
+            editable : false,
+            xtype:'combo',
+            emptyText:'请选择门店...',
+            selectOnFocus:true,
+            mode: 'local',
+            triggerAction: 'all',
+            valueField:'id',
+            displayField:'display_text',
+            forceSelection:true,
+            value:<%=(AppUser.current_store_id||'').to_json%>,
+            store : <%=CarStore.all_mendian_to_extjs_combo_store_allow_all.to_json%>
+        }]
+    }],
+    buttonAlign:'left',
+    buttons:['->',{
+        text: '重置',
+        listeners:{
+            click:function(){
+                this.findParentByType('form').getForm().reset();
+            }
+        }
+    },{
+        text: '查询',
+        ref:'../queryBtn',
+        listeners:{
+            click:function(){
+                store.baseParams=Ext.apply({},this.findParentByType('form').getForm().getValues(),store._baseParams);
+                store.load({params:{start:0, limit:pageSize}});
+            }
+        }
+    }],
+    keys:[{
+        key: [10,13],
+        fn:function(){
+            conditionForm.queryBtn.fireEvent('click');
+        }
+    }]
+});
+
+
+var win=new Ext.Window({stateId:'comm_employer_yanshou_setting_win',maximizable:true,title:'结帐优惠人员设置',layout:'border',width:800,height:400,items:[conditionForm,grid]});
+win.show();
+
+grid.on("refresh",function(){
+  this.store.reload();
+},grid);
+
+grid.on("add_jiezhang_youhui_employer",function(){
+	var params={};
+	params.items = [];
+	Ext.Ajax.request({
+		url:'/comm_employer/select_list',
+		success:function(response,opts){
+			jsret =  Ext.decode(response.responseText);
+	        if (jsret.return_type=='js' && jsret.auto_run){
+	            var win = jsret.run();
+	            win.import_callback = function(rows){
+	            	for(var i = 0;i<rows.length;i++){
+	                	params.items.push(rows[i].data.id);
+	                }
+	            	Ext.Ajax.request({
+	            		url:'/comm_employer/add_new_jiezhang_youhui_employer',
+	            		jsonData:params,
+	            		success:function(response,opts){
+	            		jsret =  Ext.decode(response.responseText);
+	            		if(jsret.success){
+	            			grid.store.reload();
+	            		}else{
+	            			Ext.Msg.alert('错误','设置结帐优惠人员错误!')
+	            		}
+	            	},
+	            	failure: function(response, opts){
+	            		return eval(response.responseText);
+	            	},
+	            	scope: this
+	            	});
+	            };
+	        }
+		},
+		failure: function(response, opts){
+            return eval(response.responseText);
+        },
+        scope: this
+	  });
+	
+},grid);
+
+grid.on("delete",function(){
+  var sm = grid.getSelectionModel();
+    if (sm.hasSelection()){
+      var sel = sm.getSelected();
+      Ext.Ajax.request({
+          url:'/comm_employer/cancel_jiezhang_youhui_employer',
+          params:{id:sel.data.id},
+          success: default_ajax_request_success_callback.createSequence(function(){
+              grid.store.reload();
+          }),
+          failure: default_ajax_request_failure_callback
+      });
+    }else{
+      Ext.Msg.alert('系统提示', "请选择数据行");
+    }
+},grid);
+
+grid.on("export_to_excel",
+  export_to_excel({grid:grid,formpanel:conditionForm,url:'/comm_employer/pishou_export_to_excel'}),
+  grid);
+  
+store.load({params:{start:0, limit:pageSize}});
+
+return win;
+}
+}

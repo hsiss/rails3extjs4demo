@@ -1,0 +1,28 @@
+# rails和extjs结合的例子
+1. ruby 2.0
+2. rails 3
+3. extjs4
+
+另外使用了
+- ueditor
+- carrierwave 文件上传
+- mini_magick 图片处理
+- mysql数据库
+- 导出excel
+- 树状结构（菜单）
+
+# 创建数据库
+mysql -u root
+执行sql
+create database rails3extjs4demo character set utf8;
+
+# 
+git clone git@github.com:hsiss/rails3extjs4demo.git
+cd rails3extjs4demo
+bundle install
+rake db:migrate
+
+# 启动服务
+rails s -p4002
+用浏览器访问localhost:4002
+

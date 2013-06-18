@@ -1,0 +1,87 @@
+{
+return_type:"js",
+success:true,
+run: function(){
+
+var form = new Ext.FormPanel({
+  region: 'center',
+  labelWidth: 75, 
+  frame:true,
+  bodyStyle:'padding:5px 5px 0',
+  width: 350,
+  defaults: {width: 230},
+  defaultType: 'textfield',
+
+  items: [{
+      xtype: 'hiddenfield',
+      name: 'id'
+  },{
+      fieldLabel: '用户名',
+      name: 'username',
+      allowBlank:false
+  },{
+      fieldLabel: '姓名',
+      name: 'name',
+      allowBlank:false
+  },{
+      fieldLabel: '对应员工',
+      name: 'employer_id',
+      xtype:'combo',
+      emptyText:'请选择员工...',
+      selectOnFocus:true,
+      mode: 'local',
+      triggerAction: 'all',
+      valueField:'id',
+      displayField:'display_text',
+      forceSelection:true,
+      store : Ext.create('Ext.data.ArrayStore', {
+          fields:['id','display_text'],
+          data : <%=raw (AdminEmployer.to_extjs_combo_data).to_json %>
+      })
+  }],
+
+  buttons: [{
+      text: '保存',
+      handler:function(){
+          Ext.Ajax.request({
+              url: '/admin_user/save/',
+              jsonData:{model:form.getForm().getFieldValues()},
+              success: function(response, opts) {
+                  var jsret =  Ext.decode(response.responseText);
+                  
+                  if (jsret.message){
+                      Ext.Msg.alert('系统提示', jsret.message);
+                  }
+                  if (jsret.errormsg){
+                      Ext.Msg.alert('错误', jsret.errormsg);
+                  }
+                  if (jsret.success){
+                    if(win.on_ok){
+                      win.on_ok();
+                    }
+                    win.close();
+                  }
+              },
+              failure: default_ajax_request_failure_callback
+          });
+      }
+  },{
+      text: '取消',
+      handler:function(){this.findParentByType('window').close();}
+  }]
+});
+
+var win = new Ext.window.Window({stateful: false, isWindow: true, constrainHeader: true, minimizable: true, maximizable: true,
+  layout:'border', title:'用户管理 - 编辑',width:500,height:380,
+  items:[form]
+});
+win.show();
+
+win.set_data = function(data){
+  form.getForm().setValues(data);
+};
+win.set_data(<%=raw @admin_user.edit_form_data.to_json%>);
+return win;
+
+}
+}

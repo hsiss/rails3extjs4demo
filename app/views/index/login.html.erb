@@ -1,0 +1,89 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta id="author" content="上海高流信息技术有限公司" />
+<meta id="Copyright" content="Copyright 2005-2015 Gaoliu Inc. All Rights Reserved" />
+<title>创翼业务系统 - 登录</title>
+
+<% theme = "classic" %>
+<%= stylesheet_link_tag "/ext/resources/ext-theme-#{theme}/ext-theme-#{theme}-all.css",:id=>"theme" %>
+<%= stylesheet_link_tag "ext/silk.css" %>
+<%= stylesheet_link_tag "/stylesheets/login.css" %>
+
+<link rel="shortcut icon" href="<%=asset_path 'favicon.png'  %>">
+
+<%= stylesheet_link_tag "application" %>
+
+<%= javascript_include_tag "/ext/ext-all.js"%>
+<%= javascript_include_tag "/ext/ext-theme-#{theme}.js"%>
+<%= javascript_include_tag "/ext/ext-lang-zh_CN.js" %>
+
+<%= javascript_include_tag "extjs_callback" %>
+ 
+</head>
+<body>
+<div class="login">
+  <ul>
+    <li>用户名：<input id="username" type="text" class="txt" size="30" /></li>
+    <li>密　码：<input id="password" type="password" class="txt" size="30" /></li>
+    <li>　　　　<a href="javascript:void(0);" id="btn_login" /><img src="/images/login/btn_dl.png"></a>　　　　<a href="javascript:void(0);" id="btn_cancel" /><img src="/images/login/btn_qx.png"></a></li>
+  </ul>
+</div>
+<div class="footer">沪ICP备12036166</div>
+
+
+<script type="text/javascript">
+  Ext.Ajax.extraParams = {extjs:true,<%=raw "#{request_forgery_protection_token}:'#{form_authenticity_token}'" %>};
+
+  var do_login = function(){
+    var params = {};
+    params['username']=Ext.get("username").getValue();
+    params['password']=Ext.get("password").getValue();
+    if(Ext.isEmpty(params['username'])){
+        Ext.get("username").focus();
+        return;
+    }
+    if(Ext.isEmpty(params['password'])){
+        Ext.get("password").focus();
+        return;
+    }
+    
+    
+    Ext.Ajax.request({
+      url: "/index/login_submit",
+      jsonData:params,
+      success: function(response, options){
+          var jsret =  Ext.decode(response.responseText);
+          if(jsret.success){
+              window.location="/";
+              return true;
+          }
+          
+          if(jsret.errormsg){
+              Ext.Msg.alert('错误', jsret.errormsg);
+              Ext.get("password").focus();
+          }
+          return false;
+      }
+    });
+  };
+  Ext.onReady(function(){
+    Ext.QuickTips.init();
+    
+    Ext.get("username").focus();
+    
+    Ext.get("btn_login").on("click",do_login);
+    Ext.get("password").on("keypress",function(event,el,obj){
+        if (event.getKey() == event.ENTER) {
+            do_login();
+        }
+    });
+    
+  });
+</script>
+
+
+</body>
+</html>
+

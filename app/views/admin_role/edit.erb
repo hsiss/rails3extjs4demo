@@ -1,0 +1,57 @@
+{
+return_type:"js",
+success:true,
+run: function(){
+
+var form = new Ext.FormPanel({
+  region: 'center',
+  labelWidth: 75, 
+  url:'<%= action_name=='new' ? url_for(:action=>:create) : url_for(:action=>:update,:id=>@admin_role) %>',
+  frame:true,
+  bodyStyle:'padding:5px 5px 0',
+  width: 350,
+  defaults: {width: 230},
+  defaultType: 'textfield',
+
+  items: [{
+          fieldLabel: '编码',
+          name: 'admin_role[code]',
+          value:'<%= @admin_role.code %>',
+          allowBlank:false
+      },{
+          fieldLabel: '名称',
+          name: 'admin_role[name]',
+          value:'<%= @admin_role.name %>',
+          allowBlank:false
+      }
+  ],
+
+  buttons: [{
+      text: '保存',
+      handler:function(){
+        this.findParentByType('form').getForm().submit({
+          success: function(form,action){
+            var this_win = this.findParentByType('window');
+            if(this_win.on_ok){
+              this_win.on_ok();
+            }
+            this_win.close();
+          },
+          failure: default_form_submit_failure_callback,
+          scope : this
+        });
+      }
+  },{
+      text: '取消',
+      handler:function(){this.findParentByType('window').close();}
+  }]
+});
+
+var win=new Ext.Window({stateful: false, isWindow: true, constrainHeader: true, minimizable: true, maximizable: true,
+  layout:'border', maximizable:true,title:'角色维护',width:400,height:300,
+  items:[form]
+});
+win.show();
+return win;
+}
+}

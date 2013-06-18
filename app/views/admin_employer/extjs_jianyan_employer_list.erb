@@ -1,0 +1,220 @@
+{
+    return_type : 'js',
+    auto_run : true,
+    run: function() {
+    
+var store = new Ext.data.JsonStore({
+    root: 'rows',
+    totalProperty: 'totalCount',
+    idProperty: 'id',
+    remoteSort: true,
+
+    fields: [
+		{name:'id'},
+		{name:'code'},
+		{name:'name'},
+		{name:'department_name'},
+		{name:'store_name'},
+		{name:'email'},
+		{name:'mobilephone'},
+		{name:'remark'},
+		{name:'is_active'}
+    ],
+    url: '/comm_employer/extjs_jianyan_employer_list_data'
+});
+store.setDefaultSort('code', 'asc');
+var pageSize = 50;
+var grid = new Ext.grid.GridPanel({
+    stateId:'comm_employer_jianyan_setting_grid',
+    ref:'grid',
+    region: 'center',
+    store: store,
+    trackMouseOver:false,
+    loadMask: true,
+    stripeRows:true,
+    columns:[
+      new Ext.grid.RowNumberer(),
+      {header:"编码",dataIndex:"code",sortable: true},
+      {header:"名称",dataIndex:"name",sortable: true},
+      {header:"部门",dataIndex:"department_name",sortable: true},
+      {header:"门店",dataIndex:"store_name",sortable: true},
+      {header:"电子邮件信箱",dataIndex:"email",sortable: true},
+      {header:"手机",dataIndex:"mobilephone",sortable: true},
+      {header:"备注",dataIndex:"remark",sortable: true},
+      {header:"可用",dataIndex:"is_active",sortable: true,renderer:function(value, metaData, record, rowIndex, colIndex, store) { return (value ? '可用' : '停用');}}
+    ],
+    sm: new Ext.grid.RowSelectionModel({singleSelect: true}),
+    viewConfig: {forceFit:true},
+    tbar:[{
+        text: '刷新', handler:function(){
+            grid.fireEvent('refresh');
+        }, scope:this 
+    },'|',{
+        text: '新增维修检验人员', handler:function(){
+            grid.fireEvent('add_jianyan_employer');
+        }, scope:this 
+    },'|',{
+        text: '删除维修检验人员', handler:function(){
+            grid.fireEvent('delete');
+        }, scope:this 
+    }],
+    bbar: new Ext.PagingToolbar({
+        pageSize: pageSize,
+        store: store,
+        displayInfo: true
+    })
+});
+
+var conditionForm = new Ext.FormPanel({
+    region: 'north',
+    labelWidth: 100, 
+    url:'',
+    frame:true,
+    title:'查询条件',
+    collapsible : true,    
+    animCollapse:false,
+    bodyStyle: 'padding:5px 5px 0',
+    defaultType: 'textfield',
+    autoHeight:true,
+    forceLayout:true,
+    layout:'column',
+    items: [{
+        xtype:'panel',
+        layout:'form',
+        columnWidth: .5,
+        defaultType: 'textfield',
+        defaults: {anchor:'90%'},
+        items:[{
+            fieldLabel: '编码',
+            name: 'code'
+        },{
+            fieldLabel: '名称',
+            name: 'name'
+        }]
+      },{
+        xtype:'panel',
+        layout:'form',
+        columnWidth: .5,
+        defaultType: 'textfield',
+        defaults: {anchor:'90%'},
+        items:[{
+            xtype: 'checkbox',
+            fieldLabel: '可用',
+            name: 'is_active',
+            checked: true
+        },{
+            fieldLabel: '门店',
+            hiddenName: 'car_store_id',
+            editable : false,
+            xtype:'combo',
+            emptyText:'请选择门店...',
+            selectOnFocus:true,
+            mode: 'local',
+            triggerAction: 'all',
+            valueField:'id',
+            displayField:'display_text',
+            forceSelection:true,
+            value:<%=(AppUser.current_store_id||'').to_json%>,
+            store : <%=CarStore.all_mendian_to_extjs_combo_store_allow_all.to_json%>
+        }]
+    }],
+    buttonAlign:'left',
+    buttons:['->',{
+        text: '重置',
+        listeners:{
+            click:function(){
+                this.findParentByType('form').getForm().reset();
+            }
+        }
+    },{
+        text: '查询',
+        ref:'../queryBtn',
+        listeners:{
+            click:function(){
+                store.baseParams=Ext.apply({},this.findParentByType('form').getForm().getValues(),store._baseParams);
+                store.load({params:{start:0, limit:pageSize}});
+            }
+        }
+    }],
+    keys:[{
+        key: [10,13],
+        fn:function(){
+            conditionForm.queryBtn.fireEvent('click');
+        }
+    }]
+});
+
+
+var win=new Ext.Window({stateId:'comm_employer_yanshou_setting_win',maximizable:true,title:'维修检验人员设置',layout:'border',width:600,height:400,items:[conditionForm,grid]});
+win.show();
+
+grid.on("refresh",function(){
+  this.store.reload();
+},grid);
+
+grid.on("add_jianyan_employer",function(){
+	var params={};
+	params.items = [];
+	Ext.Ajax.request({
+		url:'/comm_employer/select_list',
+		success:function(response,opts){
+			jsret =  Ext.decode(response.responseText);
+	        if (jsret.return_type=='js' && jsret.auto_run){
+	            var win = jsret.run();
+	            win.import_callback = function(rows){
+	            	for(var i = 0;i<rows.length;i++){
+	                	params.items.push(rows[i].data.id);
+	                }
+	            	Ext.Ajax.request({
+	            		url:'/comm_employer/add_new_jianyan_employer',
+	            		jsonData:params,
+	            		success:function(response,opts){
+	            		jsret =  Ext.decode(response.responseText);
+	            		if(jsret.success){
+	            			grid.store.reload();
+	            		}else{
+	            			Ext.Msg.alert('错误','设置三级检验人员错误!')
+	            		}
+	            	},
+	            	failure: function(response, opts){
+	            		return eval(response.responseText);
+	            	},
+	            	scope: this
+	            	});
+	            };
+	        }
+		},
+		failure: function(response, opts){
+            return eval(response.responseText);
+        },
+        scope: this
+	  });
+	
+},grid);
+
+grid.on("delete",function(){
+  var sm = grid.getSelectionModel();
+    if (sm.hasSelection()){
+      var sel = sm.getSelected();
+      Ext.Ajax.request({
+          url:'/comm_employer/cancel_repair_jianyan_employer',
+          params:{id:sel.data.id},
+          success: default_ajax_request_success_callback.createSequence(function(){
+              grid.store.reload();
+          }),
+          failure: default_ajax_request_failure_callback
+      });
+    }else{
+      Ext.Msg.alert('系统提示', "请选择数据行");
+    }
+},grid);
+
+grid.on("export_to_excel",
+  export_to_excel({grid:grid,formpanel:conditionForm,url:'/comm_employer/pishou_export_to_excel'}),
+  grid);
+  
+store.load({params:{start:0, limit:pageSize}});
+
+return win;
+}
+}
