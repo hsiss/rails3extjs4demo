@@ -7,5 +7,5 @@ development:
   username: root
   password: 
   host: localhost
-  socket: /tmp/mysql.sock
+#  socket: /tmp/mysql.sock
  
